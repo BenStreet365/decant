@@ -1,0 +1,49 @@
+# Builds and tests every push and pull request. Ad-hoc signed; uses no secrets.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # Builds with the Xcode 27 SDK; Package.swift targets macOS 26 and later (Apple silicon only).
+    runs-on: xcode-27
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
+
+      - name: Unit tests
+        timeout-minutes: 10
+        run: |
+          swift build --build-tests
+          # The suite takes seconds. If it is still running after 3 minutes, print where the test
+          # process is stuck so the log shows which test hangs.
+          ( sleep 180
+            for pid in $(pgrep -f 'DecantCoreTests.xctest'); do sample "$pid" 5 -mayDie; done ) &
+          swift test --skip-build
+
+      - name: Build package (ad-hoc signed)
+        run: Scripts/build.sh
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: decant-unsigned
+          path: .build/dist/*.pkg
+          retention-days: 7

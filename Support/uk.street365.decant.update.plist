@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Runs `decant update` every hour. It checks GitHub at most once a day and installs a new
+     release only when AutomaticUpdates allows it, the deferral has passed and the Mac is idle. -->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>uk.street365.decant.update</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/local/bin/decant</string>
+		<string>update</string>
+		<string>--quiet</string>
+	</array>
+	<key>StartInterval</key>
+	<integer>3600</integer>
+	<key>ProcessType</key>
+	<string>Background</string>
+	<key>LowPriorityIO</key>
+	<true/>
+</dict>
+</plist>

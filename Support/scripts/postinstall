@@ -1,0 +1,13 @@
+#!/bin/sh
+# Loads the update daemons after the first install, and the update service after the first install
+# of a version that has it. Later installs, including the ones the daemons make themselves, leave a
+# loaded daemon alone: unloading it would stop the update that is running.
+[ "$3" = "/" ] || exit 0
+# decant refuses to run as root when a non-root user could replace it, for example when
+# /usr/local/bin belongs to a user. Say so now rather than at the first MDM install.
+/usr/local/bin/decant show-config > /dev/null || echo "decant will not run as root until the problem above is fixed" >&2
+for LABEL in uk.street365.decant.update uk.street365.decant.update-service; do
+    /bin/launchctl print "system/$LABEL" > /dev/null 2>&1 && continue
+    /bin/launchctl bootstrap system "/Library/LaunchDaemons/$LABEL.plist" || echo "Could not load $LABEL" >&2
+done
+exit 0

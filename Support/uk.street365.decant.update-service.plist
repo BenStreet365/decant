@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Started on demand when a user asks for the newest version of decant (Check for Updates in
+     Decant.app, or `decant update --latest` without root). It installs it unless a profile turns
+     AutomaticUpdates off or sets UpdateDeferralDays, then exits once idle. -->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>uk.street365.decant.update-service</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/local/bin/decant</string>
+		<string>_update-service</string>
+	</array>
+	<key>MachServices</key>
+	<dict>
+		<key>uk.street365.decant.update-service</key>
+		<true/>
+	</dict>
+	<key>ProcessType</key>
+	<string>Background</string>
+</dict>
+</plist>

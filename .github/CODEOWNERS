@@ -1,0 +1,8 @@
+# Every change needs review from the maintainer. The workflows, build script and embedded
+# version are listed again so they stay owned if a broader rule is added later.
+*                       @BenStreet365
+
+/.github/               @BenStreet365
+/Scripts/               @BenStreet365
+/Support/               @BenStreet365
+/Package.swift          @BenStreet365

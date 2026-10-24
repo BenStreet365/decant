@@ -1,0 +1,173 @@
+# Builds, signs and notarises the installer packages and publishes them as a GitHub Release.
+#
+# Triggered by pushing a tag that matches the version in Support/Info.plist:
+#   git tag v1.0.0 && git push origin v1.0.0
+#
+# Secrets live in the "release" environment (Settings → Environments), so only this job can read
+# them. The environment requires approval from @BenStreet365 and accepts only v* tags, and a tag
+# ruleset stops anyone else creating v* tags.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: xcode-27
+    timeout-minutes: 60
+    environment: release
+    permissions:
+      contents: write   # create the release and upload assets
+    env:
+      NOTARY_PROFILE: decant-ci
+    steps:
+      # Signing keys must only ever be unlocked on a fresh GitHub-hosted VM. A self-hosted runner
+      # keeps state between jobs, so code from an earlier job could read the keychain.
+      - name: Require a GitHub-hosted runner
+        run: |
+          if [[ "$RUNNER_ENVIRONMENT" != "github-hosted" ]]; then
+            echo "::error::Release must run on a GitHub-hosted runner, not $RUNNER_ENVIRONMENT"
+            exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check tag matches Info.plist version
+        id: version
+        run: |
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Support/Info.plist)
+          if [[ "$GITHUB_REF_NAME" != "v$VERSION" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match Info.plist version $VERSION (expected v$VERSION)"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      # Release notes come from this version's section of CHANGELOG.md, so a release cannot be
+      # published without them.
+      - name: Extract release notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          awk -v v="$VERSION" '/^## / { found = ($2 == v); next } found' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md"; then
+            echo "::error::CHANGELOG.md has no notes under '## $VERSION'"
+            exit 1
+          fi
+
+      - name: Unit tests
+        timeout-minutes: 10
+        run: swift test
+
+      - name: Import signing certificates
+        env:
+          APP_P12_BASE64: ${{ secrets.DEVELOPER_ID_APPLICATION_P12_BASE64 }}
+          APP_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_APPLICATION_P12_PASSWORD }}
+          INSTALLER_P12_BASE64: ${{ secrets.DEVELOPER_ID_INSTALLER_P12_BASE64 }}
+          INSTALLER_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_INSTALLER_P12_PASSWORD }}
+          TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          echo "KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+          # -x makes the private keys non-extractable: they can sign, but cannot be exported.
+          umask 077
+          echo "$APP_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/app.p12"
+          echo "$INSTALLER_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/installer.p12"
+          security import "$RUNNER_TEMP/app.p12" -k "$KEYCHAIN" -P "$APP_P12_PASSWORD" -f pkcs12 -x -T /usr/bin/codesign
+          security import "$RUNNER_TEMP/installer.p12" -k "$KEYCHAIN" -P "$INSTALLER_P12_PASSWORD" -f pkcs12 -x -T /usr/bin/productsign
+          rm -f "$RUNNER_TEMP/app.p12" "$RUNNER_TEMP/installer.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+
+          # Put the temporary keychain first in the search list so codesign, productsign and
+          # notarytool find it.
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          security default-keychain -d user -s "$KEYCHAIN"
+
+          # Resolve the full identity names, pinned to our team so a stray certificate cannot be used.
+          APP_ID=$(security find-identity -v -p codesigning "$KEYCHAIN" | grep -o "\"Developer ID Application: .*($TEAM_ID)\"" | head -1 | tr -d '"')
+          PKG_ID=$(security find-identity -v "$KEYCHAIN" | grep -o "\"Developer ID Installer: .*($TEAM_ID)\"" | head -1 | tr -d '"')
+          if [[ -z "$APP_ID" || -z "$PKG_ID" ]]; then
+            echo "::error::Developer ID Application/Installer identities for team $TEAM_ID not found"
+            security find-identity -v "$KEYCHAIN"
+            exit 1
+          fi
+          echo "APP_SIGN_IDENTITY=$APP_ID" >> "$GITHUB_ENV"
+          echo "PKG_SIGN_IDENTITY=$PKG_ID" >> "$GITHUB_ENV"
+
+      - name: Store notarisation credentials
+        env:
+          NOTARY_KEY_P8_BASE64: ${{ secrets.NOTARY_API_KEY_P8_BASE64 }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_API_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_API_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          umask 077
+          echo "$NOTARY_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/notary.p8"
+          xcrun notarytool store-credentials "$NOTARY_PROFILE" \
+            --key "$RUNNER_TEMP/notary.p8" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" \
+            --keychain "$KEYCHAIN" --validate
+          rm -f "$RUNNER_TEMP/notary.p8"
+
+      - name: Build, sign and notarise
+        run: Scripts/build.sh --sign "$APP_SIGN_IDENTITY" --pkg-sign "$PKG_SIGN_IDENTITY" --notarize "$NOTARY_PROFILE"
+
+      - name: Verify signatures
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          PKGS=("decant-full-$VERSION.pkg" "decant-cli-$VERSION.pkg")
+          codesign --verify --strict --verbose=2 .build/dist/decant
+          INFO=$(codesign -dv --verbose=2 .build/dist/decant 2>&1)
+          grep -q "Authority=Developer ID Application" <<< "$INFO"
+          grep -q "TeamIdentifier=$TEAM_ID" <<< "$INFO"
+          grep -q "flags=.*runtime" <<< "$INFO"
+          codesign --verify --strict --deep --verbose=2 .build/dist/Decant.app
+          APP_INFO=$(codesign -dv --verbose=2 .build/dist/Decant.app 2>&1)
+          grep -q "Authority=Developer ID Application" <<< "$APP_INFO"
+          grep -q "TeamIdentifier=$TEAM_ID" <<< "$APP_INFO"
+          grep -q "flags=.*runtime" <<< "$APP_INFO"
+          for PKG in "${PKGS[@]}"; do
+            pkgutil --check-signature ".build/dist/$PKG"
+            xcrun stapler validate ".build/dist/$PKG"
+            spctl --assess --type install --verbose=2 ".build/dist/$PKG"
+            (cd .build/dist && shasum -a 256 "$PKG" > "$PKG.sha256")
+          done
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          FLAGS=(--verify-tag --notes-file "$RUNNER_TEMP/notes.md" --title "decant $VERSION")
+          [[ "$VERSION" == *-* ]] && FLAGS+=(--prerelease)
+          gh release create "$GITHUB_REF_NAME" "${FLAGS[@]}" \
+            ".build/dist/decant-full-$VERSION.pkg" \
+            ".build/dist/decant-full-$VERSION.pkg.sha256" \
+            ".build/dist/decant-cli-$VERSION.pkg" \
+            ".build/dist/decant-cli-$VERSION.pkg.sha256"
+
+      - name: Remove signing keychain
+        if: always()
+        run: |
+          security default-keychain -d user -s login.keychain-db || true
+          [[ -n "${KEYCHAIN:-}" ]] && security delete-keychain "$KEYCHAIN" || true
+          rm -f "$RUNNER_TEMP"/*.p12 "$RUNNER_TEMP"/notary.p8

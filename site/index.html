@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decant</title>
+<meta name="description" content="Install vendor DMGs into ~/Applications for standard users on managed Macs. Verified signatures, no repackaging, no prompts.">
+<link rel="canonical" href="https://decant.street365.uk/">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta property="og:title" content="Decant">
+<meta property="og:description" content="Deploy drag-and-drop Mac apps from your MDM without admin rights or repackaging.">
+<meta property="og:url" content="https://decant.street365.uk/">
+<meta property="og:type" content="website">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="wrap top">
+  <a class="brand" href="/"><img src="favicon.svg" alt="" width="24" height="24"> Decant</a>
+  <nav>
+    <a href="#security">Security</a>
+    <a href="#deploy">Deploy</a>
+    <a href="#app">App</a>
+    <a href="https://github.com/BenStreet365/decant">GitHub</a>
+  </nav>
+</header>
+
+<main>
+  <section class="wrap hero">
+    <h1>Drag and drop is lovely.<br>Unless you're the one dragging.</h1>
+    <p class="lede">Open the DMG, drag the app to Applications, done. It's a great way to install
+      an app on one Mac with an admin account. On a fleet of locked-down Macs it's a queue of
+      tickets, or an afternoon repackaging someone else's app as a <code>.pkg</code>.</p>
+    <p class="lede">Decant does the dragging. Hand it the vendor's disk image from your MDM and
+      it checks the app, then installs it into the signed-in user's
+      <code>~/Applications</code>, owned by that user. Nobody needs admin rights. Users who'd
+      rather do it themselves get Decant.app, with exactly the same checks, if you let them.</p>
+    <p class="meta">macOS 26+ · Apple silicon · Intune, Jamf, Kandji and other MDMs</p>
+  </section>
+
+  <section class="wrap" id="security">
+    <h2>Secure by default</h2>
+    <p class="sub">Because "it was on the vendor's website" isn't a security policy.</p>
+    <div class="grid">
+      <article>
+        <h3>Verifies before it installs</h3>
+        <p>Strict code signature, Developer ID and notarization through Gatekeeper, and an optional
+          pinned Team ID and bundle ID. Ad-hoc and unsigned apps are refused.</p>
+      </article>
+      <article>
+        <h3>Notarized means notarized</h3>
+        <p>If Gatekeeper is switched off, or a local rule waved the app through, nothing proves
+          notarization, so Decant refuses. A Team ID only counts if Apple issued the certificate.</p>
+      </article>
+      <article>
+        <h3>Verifies what it installs</h3>
+        <p>All checks run on a root-owned staged copy, which is then swapped in atomically. Symlink
+          tricks and races in the user's folder can't redirect root's writes.</p>
+      </article>
+      <article>
+        <h3>Only simple images</h3>
+        <p>Exactly one app and nothing else that runs. A <code>.pkg</code> in disguise, an
+          "Install Foo.app", a helpful script: all refused, with nothing changed.</p>
+      </article>
+      <article>
+        <h3>No silent rollbacks</h3>
+        <p>Downgrades are refused. Editing the version number in <code>Info.plist</code> won't keep
+          an old, vulnerable copy around, however creative the user is.</p>
+      </article>
+      <article>
+        <h3>Locked configuration</h3>
+        <p>Settings come from a managed profile that users can't change. Root-owned, non-writable
+          files only.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="wrap" id="deploy">
+    <h2>Simple to run</h2>
+    <p class="sub">No repackaging, no wrapper scripts to babysit, no "can you just make me an admin?"</p>
+    <ol class="steps">
+      <li><strong>Deploy the package.</strong> One signed, notarized <code>.pkg</code> installs
+        <code>/usr/local/bin/decant</code>, Decant.app and the update daemon. Don't want the app?
+        <code>decant-cli.pkg</code> leaves it out, and updates keep it that way.</li>
+      <li><strong>Deploy the profile.</strong> The sample <code>.mobileconfig</code> sets secure
+        defaults. Adjust what you need.</li>
+      <li><strong>Add a script per app.</strong> Point it at the vendor's download URL and Team ID.
+        The DMG goes in unchanged.</li>
+    </ol>
+<pre><code>decant install Example.dmg --expect-team-id ABCDE12345
+RESULT updated exit=0: Updated Example.app from 1.2 to 1.3 at /Users/alex/Applications/Example.app</code></pre>
+    <ul class="points">
+      <li><strong>Never prompts.</strong> The command line has no UI, mounts images hidden and
+        refuses licence dialogs, so nobody gets asked to click Agree.</li>
+      <li><strong>Idempotent.</strong> Run it every hour if it makes you feel better. If the
+        version hasn't changed, nothing happens.</li>
+      <li><strong>Stable exit codes</strong> tell your MDM when to retry: no user logged in, app
+        running, or another install in progress.</li>
+      <li><strong>Every user, or one.</strong> <code>--all-users</code> installs a separate,
+        separately verified copy for each account.</li>
+      <li><strong>Apps keep updating.</strong> Built-in updaters work without admin rights.</li>
+      <li><strong>Decant keeps itself current.</strong> It installs its own new releases once
+        they're a week old (you choose, up to 14 days) and the Mac is idle. It checks the package's
+        checksum, signing team and notarization first. Prefer to ship updates through your MDM?
+        Turn it off in the profile.</li>
+      <li><strong>Leaves when asked.</strong> <code>sudo decant uninstall</code> removes the
+        tool, the app, the daemon, the logs and every user's settings.</li>
+    </ul>
+  </section>
+
+  <section class="wrap" id="app">
+    <h2>For users, too</h2>
+    <p class="sub">For people who'd rather not raise a ticket to install a PDF reader.</p>
+    <ol class="steps">
+      <li><strong>Drop a DMG on Decant.</strong> Or use Open With in Finder.</li>
+      <li><strong>See what's inside.</strong> Every check runs first. The app's name, version,
+        Team ID and destination are shown. If anything fails, it says why and changes nothing.</li>
+      <li><strong>Install.</strong> The button only appears when every check has passed. Decant
+        installs the exact app it checked, even if the DMG changes underneath it.</li>
+    </ol>
+    <div class="shots">
+      <img src="images/app-drop.png" width="1184" height="1088" loading="lazy"
+        alt="Decant.app window asking the user to drop a disk image or choose one">
+      <img src="images/app-ready.png" width="1184" height="1088" loading="lazy"
+        alt="Decant.app showing an app whose signature and notarization checks have passed, with an Install button">
+    </div>
+    <p>It runs as the user and reads the same managed profile, so nobody can turn a check off.
+      Menu bar, open at login and update settings can be locked from the profile too.</p>
+    <p><strong>Rather keep installs to yourself?</strong> Set <code>AllowUserInstalls</code> to
+      <code>false</code> and only your MDM can install. Decant.app tells users it has been disabled
+      by their administrator and quits. It also leaves the menu bar and stops opening at login.
+      Your scripts run as root, so they still install for whoever is signed in.</p>
+  </section>
+
+  <section class="wrap note">
+    <h2>Know the limits</h2>
+    <p>It installs drag-and-drop apps. It isn't magic. Apps installed into <code>~/Applications</code> are writable by the user. Apps with system
+      extensions, privileged helpers or a fixed <code>/Applications</code> path should still be
+      deployed as packages. The README covers the trade-offs in full.</p>
+  </section>
+</main>
+
+<footer class="wrap">
+  <p>Decant · <a href="https://github.com/BenStreet365/decant">Source, releases and documentation</a> · <a href="https://github.com/BenStreet365/decant/blob/main/LICENSE">Apache License 2.0</a></p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>
+body{font:12px -apple-system,sans-serif;margin:12px;background:#fff;color:#1d1d1f}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{border:1px solid #e3e3e6;border-radius:10px;padding:8px}
+.card b{display:block;margin-bottom:4px}
+.strip{display:flex;gap:0}
+.tile{padding:6px 8px;display:flex;gap:8px;align-items:center}
+.light{background:#f6f6f8;color:#1d1d1f;--liq:#0a8cff}
+.dark{background:#1a1b1e;color:#ececef;--liq:#4fb0ff}
+.mono-l{background:#e8e8ea;color:#000;--liq:#000}
+.mono-d{background:#2a2b2f;color:#fff;--liq:#fff}
+.app{background:#fff;color:#fff;--liq:#9fd3ff}
+.ic{background:linear-gradient(#2b86f0,#0a5cc4);border-radius:22%;display:grid;place-items:center}
+.ink{fill:currentColor}.liq{fill:var(--liq)}
+.ink-s{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
+.liq-s{fill:none;stroke:var(--liq);stroke-linecap:round;stroke-linejoin:round}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute">
+ <symbol id="s1" viewBox="0 0 32 32">
+  <path class="liq-s" stroke-width="2" d="M27 3c-4.6.6-8 3.4-8 8.4V22"/>
+  <path class="ink-s" stroke-width="2" d="M22 13h2a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V12a2 2 0 0 1 2-2h4.5l2 3H16"/>
+  <rect class="liq" x="8" y="20.5" width="16" height="4.8" rx="1"/>
+ </symbol>
+ <symbol id="s2" viewBox="0 0 32 32">
+  <path class="liq-s" stroke-width="2" d="M27.5 3.5c-5 .8-8.5 3.8-8.5 8.8V21.5"/>
+  <path class="ink-s" stroke-width="2" d="M15.5 12.5H13l-2-2.5H7.5A2.5 2.5 0 0 0 5 12.5v13a3 3 0 0 0 3 3h16a3 3 0 0 0 3-3v-9.5a3 3 0 0 0-3-3h-1.5"/>
+  <path class="liq" d="M8 21q2.7-1.4 5.3 0t5.4 0t5.3 0v3.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 8 24.5Z"/>
+ </symbol>
+ <symbol id="s3" viewBox="0 0 32 32">
+  <g transform="translate(25 5.5) rotate(-40)"><path class="ink" fill-rule="evenodd" d="M-2-4h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2ZM0-1.6a1.6 1.6 0 1 0 0 3.2a1.6 1.6 0 1 0 0-3.2Z"/></g>
+  <path class="liq-s" stroke-width="2" d="M19.6 6.4c-.4.8-.6 1.8-.6 3V21.5"/>
+  <path class="ink-s" stroke-width="2" d="M15.5 12.5H13l-2-2.5H7.5A2.5 2.5 0 0 0 5 12.5v13a3 3 0 0 0 3 3h16a3 3 0 0 0 3-3v-9.5a3 3 0 0 0-3-3h-1.5"/>
+  <path class="liq" d="M8 21q2.7-1.4 5.3 0t5.4 0t5.3 0v3.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 8 24.5Z"/>
+ </symbol>
+ <symbol id="s4" viewBox="0 0 32 32">
+  <path class="liq-s" stroke-width="2.6" d="M27.5 3.2c-5 .8-8.5 3.8-8.5 8.8V20.5"/>
+  <path class="ink-s" stroke-width="2.6" d="M15 12.3h-2.2l-2-2.6H7.8a2.8 2.8 0 0 0-2.8 2.8v12.8a3.2 3.2 0 0 0 3.2 3.2h15.6a3.2 3.2 0 0 0 3.2-3.2v-9.8a3.2 3.2 0 0 0-3.2-3.2h-.8"/>
+  <path class="liq" d="M8.6 20.2q2.6-1.5 5.2 0t5.2 0t5.2 0V24.6a1.4 1.4 0 0 1-1.4 1.4H10a1.4 1.4 0 0 1-1.4-1.4Z"/>
+ </symbol>
+</svg>
+<div class="grid" id="g"></div>
+<script>
+const names=['Original (option 10)','Refined: macOS-style tab, wavy liquid','Poured from a disk image','Bold: heavier strokes for 16px'];
+const g=document.getElementById('g');
+names.forEach((n,i)=>{const id='s'+(i+1);
+ const use=s=>`<svg width="${s}" height="${s}"><use href="#${id}"/></svg>`;
+ g.insertAdjacentHTML('beforeend',`<div class="card"><b>${i+1}. ${n}</b><div class="strip">
+ <div class="tile app"><div class="ic" style="width:56px;height:56px">${use(40)}</div></div>`+
+ ['light','dark','mono-l','mono-d'].map(t=>`<div class="tile ${t}">${t.startsWith('mono')?use(32)+use(18)+use(16):use(48)+use(16)}</div>`).join('')+`</div></div>`)});
+</script>
+</body></html>

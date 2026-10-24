@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Grants decant App Management (SystemPolicyAppBundles), which macOS 26 and 27 require before
+     one app may update another, even in ~/Applications. Without it, updating an installed app
+     exits 44. Y633696656 is the Team ID official decant releases are signed with; check with:
+     codesign -dv /usr/local/bin/decant 2>&1 | grep TeamIdentifier
+     Only works for MDM-deployed profiles; a profile installed by hand cannot grant privacy access. -->
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>PayloadType</key>
+			<string>com.apple.TCC.configuration-profile-policy</string>
+			<key>PayloadIdentifier</key>
+			<string>uk.street365.decant.pppc.6F1D2C4A-3B7E-4E52-9A0C-8D41E5B27F93</string>
+			<key>PayloadUUID</key>
+			<string>6F1D2C4A-3B7E-4E52-9A0C-8D41E5B27F93</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>PayloadDisplayName</key>
+			<string>decant App Management</string>
+			<key>Services</key>
+			<dict>
+				<key>SystemPolicyAppBundles</key>
+				<array>
+					<!-- Decant.app, which installs as the logged-in user. -->
+					<dict>
+						<key>Identifier</key>
+						<string>uk.street365.decant.app</string>
+						<key>IdentifierType</key>
+						<string>bundleID</string>
+						<key>CodeRequirement</key>
+						<string>identifier "uk.street365.decant.app" and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] and certificate leaf[field.1.2.840.113635.100.6.1.13] and certificate leaf[subject.OU] = "Y633696656"</string>
+						<key>Authorization</key>
+						<string>Allow</string>
+						<key>StaticCode</key>
+						<false/>
+					</dict>
+					<!-- The decant command. This applies only when macOS holds decant itself responsible,
+					     for example when launchd starts it. When an MDM agent or Terminal runs it,
+					     that app needs App Management instead; most MDM agents already have it. -->
+					<dict>
+						<key>Identifier</key>
+						<string>/usr/local/bin/decant</string>
+						<key>IdentifierType</key>
+						<string>path</string>
+						<key>CodeRequirement</key>
+						<string>identifier "uk.street365.decant" and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] and certificate leaf[field.1.2.840.113635.100.6.1.13] and certificate leaf[subject.OU] = "Y633696656"</string>
+						<key>Authorization</key>
+						<string>Allow</string>
+						<key>StaticCode</key>
+						<false/>
+					</dict>
+				</array>
+			</dict>
+		</dict>
+	</array>
+	<key>PayloadDisplayName</key>
+	<string>decant App Management</string>
+	<key>PayloadDescription</key>
+	<string>Allows decant to update apps it installed in ~/Applications.</string>
+	<key>PayloadIdentifier</key>
+	<string>uk.street365.decant.pppc</string>
+	<key>PayloadOrganization</key>
+	<string>IT</string>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>2A9E7B15-C4D8-4F36-8E21-5B0C9D7A3E64</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

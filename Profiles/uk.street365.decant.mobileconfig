@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>PayloadType</key>
+			<string>uk.street365.decant</string>
+			<key>PayloadIdentifier</key>
+			<string>uk.street365.decant.settings.B8B32CE8-71B3-4B39-9B08-7FD92C7599C3</string>
+			<key>PayloadUUID</key>
+			<string>B8B32CE8-71B3-4B39-9B08-7FD92C7599C3</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>PayloadDisplayName</key>
+			<string>decant settings</string>
+
+			<!-- Values set here override user-scoped profiles. Leave a key out to let a user
+			     profile decide it. -->
+
+			<!-- Require Gatekeeper to accept the app as notarised Developer ID, Apple or Mac App Store
+			     before installing. Also refuses if Gatekeeper is disabled on the Mac. -->
+			<key>RequireGatekeeperAssessment</key>
+			<true/>
+
+			<!-- Accept ad-hoc signed apps (no Developer ID). Testing only. -->
+			<key>AllowAdHocSignatures</key>
+			<false/>
+
+			<!-- Optional Team ID allow list. Empty = any team.
+			     Matching is case-insensitive; apps from any other team exit 24. Example that
+			     allows only Google, Microsoft and Mozilla apps:
+
+			<key>AllowedTeamIdentifiers</key>
+			<array>
+				<string>EQHXZ8M8AV</string>
+				<string>UBF8T346G9</string>
+				<string>43AQ936H96</string>
+			</array>
+
+			     Find an app's Team ID with: codesign -dv /path/to/App.app 2>&1 | grep TeamIdentifier -->
+			<key>AllowedTeamIdentifiers</key>
+			<array/>
+
+			<!-- Accept a licence agreement embedded in the DMG on the user's behalf. -->
+			<key>AcceptLicenseAgreements</key>
+			<false/>
+
+			<key>AllowDowngrade</key>
+			<false/>
+
+			<!-- Skip (exit 40, retry later) | Replace | Terminate -->
+			<key>RunningAppBehavior</key>
+			<string>Skip</string>
+
+			<!-- Accept "install --user <name>" to install for an account other than the console user.
+			     Off: --user is refused (exit 10). Only read from this device-scoped profile.
+			     Does not affect --all-users. -->
+			<key>AllowUserOption</key>
+			<false/>
+
+			<!-- Let users install apps themselves (decant install without root, or Decant.app).
+			     False: only root (this MDM) can install; non-root installs exit 10 and Decant.app
+			     says it has been disabled by your administrator. Overrides ShowInMenuBar and
+			     OpenAtLogin, which are then off. -->
+			<key>AllowUserInstalls</key>
+			<true/>
+
+			<!-- Decant.app settings. Each locks the user's choice; leave them out to let users
+			     choose (both default off).
+			     ShowInMenuBar: keep Decant in the menu bar when its window is closed.
+			     OpenAtLogin: open Decant at login.
+
+			<key>ShowInMenuBar</key>
+			<true/>
+			<key>OpenAtLogin</key>
+			<true/>
+			-->
+
+			<!-- Updates of decant itself. Each locks the user's choice in Decant.app; leave them
+			     out to let users choose.
+			     AutomaticUpdates: install new GitHub releases while the Mac is idle (default on).
+			     UpdateDeferralDays: install a release only once it has been out this many days,
+			     0 to 14 (default 7).
+
+			<key>AutomaticUpdates</key>
+			<true/>
+			<key>UpdateDeferralDays</key>
+			<integer>7</integer>
+			-->
+		</dict>
+	</array>
+	<key>PayloadDisplayName</key>
+	<string>decant</string>
+	<key>PayloadDescription</key>
+	<string>Configures decant, which installs drag-and-drop disk images into ~/Applications.</string>
+	<key>PayloadIdentifier</key>
+	<string>uk.street365.decant.profile</string>
+	<key>PayloadOrganization</key>
+	<string>IT</string>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>B12980E1-020A-445A-86A3-C8691757194F</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>
