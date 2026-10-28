@@ -1,10 +1,14 @@
 # Builds and tests every push and pull request. Ad-hoc signed; uses no secrets.
+# Changes only to the website or Markdown skip it: neither goes into the build. Cloudflare Pages
+# previews the website on its own.
 name: CI
 
 on:
   push:
     branches: [main]
+    paths-ignore: ['site/**', '**.md']
   pull_request:
+    paths-ignore: ['site/**', '**.md']
 
 permissions:
   contents: read
